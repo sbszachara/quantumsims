@@ -1,47 +1,77 @@
-# ===============================================
-# File: bandit.py
-# Description: Implements two types of multi-armed bandits used to select runtime QEC and post-processing strategies.
-# Mapping to Framework:
-# - The ContextualTSBandit reflects the Thompson Sampling with Contextual Linear Models (TS-CL)
-# - The NSBandit serves as a lightweight non-contextual bandit used for post-processing strategy selection
-# ===============================================
+# bandit.py
+# -------------------------------------------------------------
+# This file defines both contextual and non-contextual multi-armed bandits.
+# These are used for selecting optimal strategies for:
+# 1. Real-time error correction (ContextualTSBandit)
+# 2. Post-processing mitigation (NSBandit)
+# The Thompson Sampling logic models the adaptive behavior described in the
+# Krutz QEC framework for resource-aware decision-making.
+# -------------------------------------------------------------
 
+import numpy as np
 import random
-from collections import defaultdict
 
 class ContextualTSBandit:
-    def __init__(self, arms):
-        # Each 'arm' corresponds to a QEC strategy (e.g., full_qec, light_qec, inaction)
-        self.arms = arms
-        # Rewards are stored by context → arm → list of fidelities observed
-        self.rewards = defaultdict(lambda: defaultdict(list))
+    """
+    Contextual Thompson Sampling Bandit (TS-CL)
+    --------------------------------------------------
+    - Used for runtime error correction (QEC) strategy selection.
+    - Takes in contextual telemetry (e.g., noise class: idle, coherent-noise).
+    - Applies Thompson Sampling to select optimal QEC strategy
+      (e.g., full_qec, light_qec, inaction) based on historical fidelity rewards.
+    """
+    def __init__(self, strategies, context_classes):
+        self.strategies = strategies
+        self.contexts = context_classes
 
-    def choose_arm(self, context):
-        # This function models Thompson Sampling with Gaussian priors per context-arm
-        means = {}
-        for arm in self.arms:
-            r = self.rewards[context][arm]
-            # If reward history exists, sample from normal(mean, 0.1) else use uniform random
-            means[arm] = random.gauss(sum(r)/len(r), 0.1) if r else random.random()
-        # Select the arm with the highest sampled reward
-        return max(means, key=means.get)
+        # Alpha and Beta parameters for Beta distributions, per context and strategy
+        self.alpha = {
+            context: {strategy: 1 for strategy in strategies}
+            for context in context_classes
+        }
+        self.beta = {
+            context: {strategy: 1 for strategy in strategies}
+            for context in context_classes
+        }
 
-    def update(self, context, arm, reward):
-        # Update the rewards with observed fidelity for (context, strategy)
-        self.rewards[context][arm].append(reward)
+    def select(self, context):
+        # Sample from Beta distribution for each strategy in current context
+        samples = {
+            strategy: np.random.beta(self.alpha[context][strategy],
+                                     self.beta[context][strategy])
+            for strategy in self.strategies
+        }
+        # Return the strategy with the highest sampled reward
+        return max(samples, key=samples.get)
+
+    def update(self, context, strategy, reward):
+        # Reward = normalized fidelity or success metric
+        self.alpha[context][strategy] += reward
+        self.beta[context][strategy] += 1 - reward
 
 
 class NSBandit:
-    def __init__(self, arms):
-        # Post-processing strategies (PEC, ZNE, MEM, none)
-        self.arms = arms
-        self.rewards = defaultdict(list)
+    """
+    Non-Contextual Bandit (Naive Strategy Selector)
+    --------------------------------------------------
+    - Used for post-processing strategy selection (e.g., PEC, ZNE, MEM, none).
+    - Ignores contextual telemetry; uses average observed fidelity to select strategy.
+    - Can be extended with metadata for contextual logic.
+    """
+    def __init__(self, strategies):
+        self.strategies = strategies
+        self.alpha = {strategy: 1 for strategy in strategies}
+        self.beta = {strategy: 1 for strategy in strategies}
 
-    def choose_arm(self):
-        # Uses average reward over recent 5 runs to select best strategy
-        def score(r): return sum(r[-5:]) / min(5, len(r)) if r else random.random()
-        return max(self.arms, key=lambda arm: score(self.rewards[arm]))
+    def select(self):
+        # Sample from Beta distributions and pick the best
+        samples = {
+            strategy: np.random.beta(self.alpha[strategy], self.beta[strategy])
+            for strategy in self.strategies
+        }
+        return max(samples, key=samples.get)
 
-    def update(self, arm, reward):
-        # Update observed reward (fidelity) for the mitigation strategy
-        self.rewards[arm].append(reward)
+    def update(self, strategy, reward):
+        # Update belief about strategy effectiveness
+        self.alpha[strategy] += reward
+        self.beta[strategy] += 1 - reward
