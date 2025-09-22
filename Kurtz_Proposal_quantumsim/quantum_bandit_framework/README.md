@@ -51,3 +51,7 @@ run_simulation.py: the main driver that ties everything together.
 ## Notes
 
 This is a rough prototype meant to show the idea. It could be extended with better models, more realistic circuits, and more advanced bandit algorithms. Right now the ML models are placeholders and the noise/fidelity mapping is simplistic. It is enough to demonstrate the basic flow of adaptive quantum error management in a lightweight way.
+
+## Sources
+
+Derived from Dr. Dan Kurtz's proposal at Rochester Institute of Technology
