@@ -1,87 +1,57 @@
-# QuantumSims – Full Project Overview
+# Quantum Error Management Simulation Framework
 
-This repository includes **two quantum simulation frameworks**:
-1. 🔹 A simple Qiskit + Bandit integration (minimal prototype)
-2. 🔸 A full adaptive simulation based on contextual bandits and machine learning
+This is a simple prototype framework for experimenting with adaptive quantum error management. It shows how basic bandit algorithms, noise prediction, and mitigation strategies can be combined into a small end to end simulation. It uses Qiskit to run a toy quantum circuit and then applies error correction or mitigation choices.
 
----
+## Installation
 
-## 📁 Simple Quantum Bandit Framework
+Files included:
+bandit.py
+ml_models.py
+quantum_sim.py
+run_simulation.py
 
-This is a very minimal prototype showing how a bandit algorithm can pick between two strategies, one of which runs a small quantum circuit in Qiskit.
+Requirements:
+Python 3.8+
+qiskit
+numpy
 
-### 📄 Files
+Install dependencies with:
+pip install qiskit numpy qiskit-aer
 
-- `bandit.py` – defines a SimpleBandit class with two strategies (random choice)
-- `quantum_sim.py` – runs a one-qubit Hadamard circuit and measures outcomes with Qiskit Aer
-- `run_simulation.py` – main driver, uses the bandit to pick a strategy and then runs either the quantum circuit or a dummy alternative
+## Running the simulation
 
-### ⚙️ Install
-
-```bash
-pip install qiskit
-```
-
-### ▶️ Run
-
-```bash
+From the project directory run:
 python run_simulation.py
-```
 
-### 🔍 What Happens
+This will run 10 trials of the simulation and print results to the console.
 
-- The bandit picks either `strategy_1` or `strategy_2`.
-- If it picks `strategy_1`, it runs a Hadamard + measure circuit.
-- If it picks `strategy_2`, it just returns dummy results `{"0": 50, "1": 50}`.
+## What happens
 
-This shows a minimal quantum + bandit setup.
+Each trial goes through a few steps:
 
----
+1. A context is chosen at random. Contexts are idle, coherent-noise, or readout-error.
 
-## 🧠 Advanced Quantum Bandit Framework
+2. A bandit algorithm (Contextual Thompson Sampling) picks a QEC strategy. Strategies are full_qec, light_qec, or inaction. A small safety check may override unsafe choices.
 
-This module simulates adaptive quantum error management strategies using contextual bandits and post-processing logic. It is based on the proposal: _Contextual and Uncertainty-Aware Adaptive Quantum Error Management_ by Daniel Krutz (RIT).
+3. The toy quantum circuit is run in Qiskit with that strategy. The result is a fidelity value.
 
-### 📁 Files
+4. Another bandit (non-stationary) chooses a post-processing mitigation. Options are zne, pec, mem, or none. This adjusts the fidelity further.
 
-- `run_simulation.py` – Main orchestrator: handles context, QEC selection, mitigation, and logging
-- `quantum_sim.py` – Qiskit circuit + simulated noise modeling
-- `bandit.py` – Contextual and non-stationary bandit strategies
-- `ml_models.py` – Placeholder for future ML-based prediction (e.g., DRL, PyTorch, SVGP)
+5. Final fidelity is printed.
 
-### 📥 Clone the Repository
+After 10 trials it prints "Simulation complete."
 
-```bash
-git clone https://github.com/sbszachara/quantumsims.git
-cd quantumsims/quantum_bandit_framework
-```
+## File overview
 
-### ⚙️ Setup (Virtual Environment Recommended)
+bandit.py: small implementations of ContextualTSBandit and NSBandit for strategy selection.
+ml_models.py: stub functions for noise prediction and mitigation gain prediction.
+quantum_sim.py: runs a simple one qubit circuit in Qiskit Aer and estimates fidelity under different strategies.
+run_simulation.py: the main driver that ties everything together.
 
-```bash
-python3 -m venv venv
-source venv/bin/activate    # Windows: venv\Scripts\activate
-pip install qiskit numpy
-```
+## Notes
 
-### ▶️ Run
+This is a rough prototype meant to show the idea. It could be extended with better models, more realistic circuits, and more advanced bandit algorithms. Right now the ML models are placeholders and the noise/fidelity mapping is simplistic. It is enough to demonstrate the basic flow of adaptive quantum error management in a lightweight way.
 
-```bash
-python run_simulation.py
-```
+## Sources
 
-You'll see contextual episodes with chosen QEC strategy, simulated fidelity, and post-mitigation steps.
-
----
-
-## 🧱 Future Work
-
-- Plug in PyTorch models to `ml_models.py`
-- Replace Gaussian bandits with learned TS/UCB policies
-- Visualize results (e.g. fidelity over time) with Matplotlib
-
----
-
-## 📜 License
-
-MIT License — Feel free to fork, reuse, and build upon.
+Derived from Dr. Dan Kurtz's proposal at Rochester Institute of Technology
